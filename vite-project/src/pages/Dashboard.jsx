@@ -1,7 +1,7 @@
 import React, { useContext, useState, useEffect } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import axios from '../utils/axiosInstance'; // ✅ updated import
 import { toast } from 'react-toastify';
 import JobStatusChart from '../components/JobStatusChart';
 import jsPDF from 'jspdf';
@@ -20,7 +20,6 @@ const exportToCSV = (jobs, filename = 'jobs.csv') => {
   ]);
 
   const csvContent = [headers, ...rows].map(e => e.join(',')).join('\n');
-
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
   const link = document.createElement('a');
   link.href = URL.createObjectURL(blob);
@@ -58,7 +57,7 @@ const exportToPDF = (jobs) => {
 };
 
 const Dashboard = () => {
-  const { user, logout, token } = useContext(AuthContext);
+  const { user, logout } = useContext(AuthContext);
   const navigate = useNavigate();
 
   const [jobs, setJobs] = useState([]);
@@ -81,13 +80,10 @@ const Dashboard = () => {
 
   const fetchJobs = async () => {
     try {
-      const res = await axios.get('/api/jobs', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await axios.get('/jobs');
       const jobData = res.data;
       setJobs(jobData);
 
-      // Reminder notifications
       jobData.forEach(job => {
         if (job.interviewDate) {
           const interviewTime = new Date(job.interviewDate).getTime();
@@ -101,7 +97,6 @@ const Dashboard = () => {
           }
         }
       });
-
     } catch (err) {
       toast.error('Failed to load jobs');
     }
@@ -109,9 +104,7 @@ const Dashboard = () => {
 
   const fetchStats = async () => {
     try {
-      const res = await axios.get('/api/jobs/stats', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await axios.get('/jobs/stats');
       setStats(res.data);
     } catch (err) {
       toast.error('Failed to load job stats');
@@ -120,11 +113,7 @@ const Dashboard = () => {
 
   useEffect(() => {
     if ('Notification' in window) {
-      Notification.requestPermission().then((permission) => {
-        if (permission === 'granted') {
-          console.log('Notification permission granted');
-        }
-      });
+      Notification.requestPermission();
     }
 
     fetchJobs();
@@ -141,19 +130,14 @@ const Dashboard = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     try {
       if (editMode) {
-        await axios.put(`/api/jobs/${editJobId}`, formData, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        await axios.put(`/jobs/${editJobId}`, formData);
         toast.success('Job updated');
         setEditMode(false);
         setEditJobId(null);
       } else {
-        await axios.post('/api/jobs', formData, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        await axios.post('/jobs', formData);
         toast.success('Job added');
       }
 
@@ -189,9 +173,7 @@ const Dashboard = () => {
     if (!window.confirm('Are you sure you want to delete this job?')) return;
 
     try {
-      await axios.delete(`/api/jobs/${jobId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      await axios.delete(`/jobs/${jobId}`);
       toast.success('Job deleted');
       fetchJobs();
       fetchStats();
@@ -276,7 +258,7 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* Export Button */}
+      {/* Export Buttons */}
       <div className="text-end mb-3">
         <button className="btn btn-outline-success me-2" onClick={() => exportToCSV(filteredJobs)}>
           Export to CSV
@@ -355,7 +337,7 @@ const Dashboard = () => {
         </ul>
       </div>
 
-      {/* Job Analytics */}
+      {/* Job Stats */}
       {stats && (
         <div className="mt-5">
           <h5 className="mb-3">📈 Application Summary</h5>

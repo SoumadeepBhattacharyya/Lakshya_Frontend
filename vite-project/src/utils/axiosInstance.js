@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const instance = axios.create({
-  baseURL: '/api',
+  baseURL: 'https://lakshya-d7xc.onrender.com/api',
 });
 
 // Automatically attach token from localStorage
